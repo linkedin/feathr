@@ -180,8 +180,10 @@ class FeathrClient(object):
             'feature_registry', 'purview', 'delimiter')
         self.azure_purview_name = self.envutils.get_environment_variable_with_default(
             'feature_registry', 'purview', 'purview_name')
+        self.type_system_initialization = self.envutils.get_environment_variable_with_default(
+            'feature_registry', 'purview', 'type_system_initialization')
         # initialize the registry no matter whether we set purview name or not, given some of the methods are used there.
-        self.registry = _FeatureRegistry(self.project_name, self.azure_purview_name, self.registry_delimiter, project_registry_tag, config_path = config_path, credential=self.credential)
+        self.registry = _FeatureRegistry(self.project_name, self.azure_purview_name, self.registry_delimiter, project_registry_tag, config_path = config_path, credential=self.credential, type_system_initialization=self.type_system_initialization)
 
     def _check_required_environment_variables_exist(self):
         """Checks if the required environment variables(form feathr_config.yaml) is set.
@@ -774,6 +776,7 @@ class FeathrClient(object):
         feature_dict = {}
         # add those features into a dict for easier lookup
         for anchor in registry_anchor_list:
+            feature_dict[anchor.name] = anchor
             for feature in anchor.features:
                 feature_dict[feature.name] = feature
         for feature in registry_derived_feature_list:
