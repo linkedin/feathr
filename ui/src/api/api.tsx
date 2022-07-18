@@ -8,6 +8,7 @@ import {
 } from "../models/model";
 import {InteractionRequiredAuthError, PublicClientApplication,} from "@azure/msal-browser";
 import { getMsalConfig } from "../utils/utils";
+import { appInsights } from "./appInsights";
 
 const msalInstance = getMsalConfig();
 const getApiBaseUrl = () => {
@@ -58,7 +59,7 @@ export const fetchFeatures = async (
 export const fetchFeature = async (project: string, featureId: string) => {
   const axios = await authAxios(msalInstance);
   return axios
-    .get<Feature>(`${getApiBaseUrl()}/features/${featureId}`, { 
+    .get<Feature>(`${getApiBaseUrl()}/features/${featureId}`, {
       params: { project: project}
     })
     .then((response) => {
@@ -183,9 +184,9 @@ export const getIdToken = async (
     scopes: ["User.Read"],
     account: activeAccount || accounts[0],
   };
-  
+
   let idToken = ""
-  
+
   // Silently acquire an token for a given set of scopes. Will use cached token if available, otherwise will attempt to acquire a new token from the network via refresh token.
   // A known issue may cause token expire: https://github.com/AzureAD/microsoft-authentication-library-for-js/issues/4206
   await msalInstance.acquireTokenSilent(request).then(response => {
@@ -198,8 +199,8 @@ export const getIdToken = async (
         idToken = response.idToken
       });
     }
+    appInsights.trackEvent({name: "Get token error"}, { message: JSON.stringify(error)});
   });
-
   return idToken;
 };
 

@@ -3,10 +3,16 @@ import { Layout } from 'antd';
 import { useAccount, useMsal } from "@azure/msal-react";
 import './header.css';
 import HeaderWidget from "./headerWidget";
+import { appInsights } from "../../api/appInsights";
 
 const Header: React.FC = () => {
   const { accounts } = useMsal();
   const account = useAccount(accounts[0] || {});
+
+  if(account?.username){
+    appInsights.setAuthenticatedUserContext(account?.username);
+  }
+
   return (
     <Layout.Header className="layout-header" style={ { backgroundColor: "#fff", height : "auto" } }>
       <span>In Feathr Feature Store, you can manage and share features.
