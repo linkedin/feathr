@@ -30,6 +30,15 @@ object FileFormat {
   val DATA_FORMAT = "data.format"
 
   /**
+   * Convert string to special characters
+   * @return a String
+   */
+  def escape(raw: String): String = {
+    import scala.reflect.runtime.universe._
+    Literal(Constant(raw)).toString.replaceAll("\"", "")
+  }
+
+  /**
    * To define if the file is JDBC, Single File or Path list (default)
    * @param path
    * @return
@@ -51,9 +60,17 @@ object FileFormat {
 
   // TODO: Complete a general loadDataFrame and replace current adhoc load data frame code
   def loadDataFrame(ss: SparkSession, path: String, format: String = CSV): DataFrame = {
+
+    // Get csvDelimiterOption set with spark.feathr.inputFormat.csvOptions.sep
+    val sqlContext = ss.sqlContext
+    // Get rawCsvDelimiterOption from spark.feathr.inputFormat.csvOptions.sep
+    val rawCsvDelimiterOption = sqlContext.getConf("spark.feathr.inputFormat.csvOptions.sep", ",")
+    // If rawCsvDelimiterOption is not properly set, defaults to "," as the delimiter else csvDelimiterOption
+    val csvDelimiterOption = if (escape(rawCsvDelimiterOption).trim.isEmpty) "," else rawCsvDelimiterOption
+
     format match {
       case AVRO => new AvroJsonDataLoader(ss, path).loadDataFrame()
-      case CSV => ss.read.format("csv").option("header", "true").load(path)
+      case CSV => ss.read.format("csv").option("header", "true").option("delimiter", csvDelimiterOption).load(path)
       case PARQUET => new ParquetDataLoader(ss, path).loadDataFrame()
       case _ => ???
     }
@@ -69,23 +86,32 @@ object FileFormat {
     val p = existingHdfsPaths.head.toLowerCase()
     p match {
       case p if p.endsWith(".csv") => CSV
+      case p if p.endsWith(".tsv") => CSV
       case p if p.endsWith(".parquet") => PARQUET
       case p if p.endsWith(".orc") => ORC
       case p if p.endsWith(".avro.json") => AVRO_JSON
       case p if p.endsWith(".avro") => AVRO
       case p if p.startsWith("jdbc:") => JDBC
       case _ =>
-      // if we cannot tell the file format from the file extensions, we should read from `spark.feathr.inputFormat` to get the format that's sepcified by user.
-      dataIOParameters.getOrElse(DATA_FORMAT, ss.conf.get("spark.feathr.inputFormat", AVRO)).toUpperCase
+        // if we cannot tell the file format from the file extensions, we should read from `spark.feathr.inputFormat` to get the format that's sepcified by user.
+        dataIOParameters.getOrElse(DATA_FORMAT, ss.conf.get("spark.feathr.inputFormat", AVRO)).toUpperCase
     }
 
 
   }
 
   def loadHdfsDataFrame(format: String, existingHdfsPaths: Seq[String]): DataFrame = {
+
+    // Get csvDelimiterOption set with spark.feathr.inputFormat.csvOptions.sep
+    val sqlContext = ss.sqlContext
+    // Get rawCsvDelimiterOption from spark.feathr.inputFormat.csvOptions.sep
+    val rawCsvDelimiterOption = sqlContext.getConf("spark.feathr.inputFormat.csvOptions.sep", ",")
+    // If rawCsvDelimiterOption is not properly set, defaults to "," as the delimiter else csvDelimiterOption
+    val csvDelimiterOption = if (escape(rawCsvDelimiterOption).trim.isEmpty) "," else rawCsvDelimiterOption
+
     val df = format match {
       case CSV =>
-        ss.read.format("csv").option("header", "true").load(existingHdfsPaths: _*)
+        ss.read.format("csv").option("header", "true").option("delimiter", csvDelimiterOption).load(existingHdfsPaths: _*)
       case AVRO =>
         ss.read.format(AVRO_DATASOURCE).load(existingHdfsPaths: _*)
       case ORC =>
